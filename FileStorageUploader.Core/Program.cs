@@ -27,7 +27,7 @@ namespace FileStorageUploader.Core
             var storageService = serviceProvider.GetRequiredService<IFileStorageService>();
             var container = configuration["ContainerName"];
 
-            var path = GetInput("Path to File");
+            var path = GetInput("Enter path to File");
             if (!File.Exists(path))
             {
                 Console.WriteLine("File does not exist. Please try again.");
@@ -44,7 +44,9 @@ namespace FileStorageUploader.Core
                 if (key == 'Y')
                 {
                     validResponse = true;
-                    var exists = await storageService.ExistsAsync(container, fileName);
+                    var dir = GetInput("[Optional]: Enter file storage directory");
+                    var filePath = Path.Combine(dir, fileName);
+                    var exists = await storageService.ExistsAsync(container, filePath);
                     if (exists)
                     {
                         var validOverwritePromptResponse = false;
@@ -64,8 +66,8 @@ namespace FileStorageUploader.Core
                         } while (!validOverwritePromptResponse);
                     }
                     Console.WriteLine("Uploading file..");
-                    var filePath = await storageService.UploadAsync(container, fileName, fileStream);
-                    Console.WriteLine($"Uploaded file to {filePath}{Environment.NewLine}Press any key to close..");
+                    var url = await storageService.UploadAsync(container, filePath, fileStream);
+                    Console.WriteLine($"Uploaded file to {url}{Environment.NewLine}Press any key to close..");
                     Console.ReadKey();
                 }
                 else if (key == 'N')
@@ -78,7 +80,7 @@ namespace FileStorageUploader.Core
 
         private static string GetInput(string prompt)
         {
-            Console.WriteLine("Enter {0}", prompt);
+            Console.WriteLine("{0}", prompt);
             var result = Console.ReadLine();
             return result ?? string.Empty;
         }
