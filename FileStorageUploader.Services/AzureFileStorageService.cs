@@ -1,17 +1,30 @@
 ﻿namespace FileStorageUploader.Services
 {
+    using System.ComponentModel;
     using System.IO;
     using System.Threading.Tasks;
     using Azure.Storage.Blobs;
+    using Azure.Storage.Blobs.Models;
     using Microsoft.Extensions.Configuration;
 
     public class AzureFileStorageService : IFileStorageService
     {
         private readonly string connectionString;
+        private readonly string storageContainerName;
 
         public AzureFileStorageService(IConfiguration config)
         {
             this.connectionString = config["ConnectionString"] ?? "";
+            this.storageContainerName = config["ContainerName"] ?? "";
+
+            InitContainer().Wait();
+        }
+
+        private async Task<bool> InitContainer()
+        {
+            var blobClient = new BlobContainerClient(this.connectionString, this.storageContainerName);
+            await blobClient.CreateIfNotExistsAsync(PublicAccessType.BlobContainer);
+            return true;
         }
 
         public async Task<string> UploadAsync(string container, string fileName, Stream stream)
