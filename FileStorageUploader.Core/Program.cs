@@ -1,6 +1,8 @@
 ﻿using FileStorageUploader.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.IO;
+using System.IO.Pipes;
 
 namespace FileStorageUploader.Core
 {
@@ -27,55 +29,80 @@ namespace FileStorageUploader.Core
             var storageService = serviceProvider.GetRequiredService<IFileStorageService>();
             var container = configuration["ContainerName"];
 
-            var path = GetInput("Enter path to File");
-            if (!File.Exists(path))
+            var file = GetFileFromPath(GetInput("Enter path to File"));
+            if (file == null)
             {
-                Console.WriteLine("File does not exist. Please try again.");
                 await Init();
                 return;
             }
-            var fileStream = File.OpenRead(path);
-            var validResponse = false;
+
+            var fileName = Path.GetFileName(file.Name);
+            if (!ConfirmFileName(fileName))
+            {
+                await Init();
+                return;
+            }
+
+            var dir = GetInput("[Optional]: Enter file storage directory");
+            var filePath = Path.Combine(dir, fileName);
+
+            var exists = await storageService.ExistsAsync(container, filePath);
+            if (exists && !ConfirmFileOverwrite())
+            {
+                await Init();
+                return;
+            }
+
+            Console.WriteLine("Uploading file..");
+            var url = await storageService.UploadAsync(container, filePath, file);
+            Console.WriteLine($"Uploaded file to {url}{Environment.NewLine}Press any key to close..");
+            Console.ReadKey();
+        }
+
+        private static bool ConfirmFileOverwrite()
+        {
             do
             {
-                var fileName = Path.GetFileName(fileStream.Name);
+                Console.WriteLine("File already exists. Overwrite? (Y/N)");
+                var key = char.ToUpper(Console.ReadKey(true).KeyChar);
+                if (key == 'N')
+                {
+                    return false;
+                }
+                else if (key == 'Y')
+                {
+                    break;
+                }
+            } while (true);
+            return true;
+        }
+
+        private static bool ConfirmFileName(string fileName)
+        {
+            do
+            {
                 Console.WriteLine($"Found {fileName}{Environment.NewLine}Do you want to continue? (Y/N)");
                 var key = char.ToUpper(Console.ReadKey(true).KeyChar);
                 if (key == 'Y')
                 {
-                    validResponse = true;
-                    var dir = GetInput("[Optional]: Enter file storage directory");
-                    var filePath = Path.Combine(dir, fileName);
-                    var exists = await storageService.ExistsAsync(container, filePath);
-                    if (exists)
-                    {
-                        var validOverwritePromptResponse = false;
-                        do
-                        {
-                            Console.WriteLine("File already exists. Overwrite? (Y/N)");
-                            key = char.ToUpper(Console.ReadKey(true).KeyChar);
-                            if (key == 'N')
-                            {
-                                await Init();
-                                return;
-                            }
-                            else if (key == 'Y')
-                            {
-                                validOverwritePromptResponse = true;
-                            }
-                        } while (!validOverwritePromptResponse);
-                    }
-                    Console.WriteLine("Uploading file..");
-                    var url = await storageService.UploadAsync(container, filePath, fileStream);
-                    Console.WriteLine($"Uploaded file to {url}{Environment.NewLine}Press any key to close..");
-                    Console.ReadKey();
+                    break;
                 }
                 else if (key == 'N')
                 {
-                    await Init();
-                    return;
+                    return false;
                 }
-            } while (!validResponse);
+            } while (true);
+            return true;
+        }
+
+        private static FileStream? GetFileFromPath(string path)
+        {
+            if (!File.Exists(path))
+            {
+                Console.WriteLine("File does not exist. Please try again.");
+                return null;
+            }
+            return File.OpenRead(path);
         }
 
         private static string GetInput(string prompt)
