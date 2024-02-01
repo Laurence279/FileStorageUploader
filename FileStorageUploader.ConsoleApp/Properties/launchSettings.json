@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "FileStorageUploader.ConsoleApp": {
+      "commandName": "Project"
+    }
+  }
+}

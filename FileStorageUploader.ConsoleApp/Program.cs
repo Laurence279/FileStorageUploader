@@ -1,10 +1,8 @@
-﻿using FileStorageUploader.Services;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System.IO;
-using System.IO.Pipes;
+using FileStorageUploader.Core;
 
-namespace FileStorageUploader.Core
+namespace FileStorageUploader.ConsoleApp
 {
     internal class Program
     {
@@ -24,39 +22,45 @@ namespace FileStorageUploader.Core
             var services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(configuration);
             services.AddSingleton<IFileStorageService, AzureFileStorageService>();
+            services.AddSingleton<IFileSystemService, FileSystemService>();
             var serviceProvider = services.BuildServiceProvider();
 
             var storageService = serviceProvider.GetRequiredService<IFileStorageService>();
+            var fileSystemService = serviceProvider.GetRequiredService<IFileSystemService>();
             var container = configuration["ContainerName"];
 
-            var file = GetFileFromPath(GetInput("Enter path to File"));
-            if (file == null)
+            var files = fileSystemService.GetFilesFromPath(GetInput("Enter path to File"));
+            if (files.Length <= 0)
             {
                 await Init();
                 return;
             }
 
-            var fileName = Path.GetFileName(file.Name);
-            if (!ConfirmFileName(fileName))
+            foreach (var fsPath in files)
             {
-                await Init();
-                return;
+                var file = File.OpenRead(fsPath);
+                var fileName = Path.GetFileName(file.Name);
+                if (!ConfirmFileName(fileName))
+                {
+                    await Init();
+                    return;
+                }
+
+                var dir = GetInput("[Optional]: Enter file storage directory");
+                var filePath = Path.Combine(dir, fileName);
+
+                var exists = await storageService.ExistsAsync(container, filePath);
+                if (exists && !ConfirmFileOverwrite())
+                {
+                    await Init();
+                    return;
+                }
+
+                Console.WriteLine("Uploading file..");
+                var url = await storageService.UploadAsync(container, filePath, file);
+                Console.WriteLine($"Uploaded file to {url}{Environment.NewLine}Press any key to close..");
+                Console.ReadKey();
             }
-
-            var dir = GetInput("[Optional]: Enter file storage directory");
-            var filePath = Path.Combine(dir, fileName);
-
-            var exists = await storageService.ExistsAsync(container, filePath);
-            if (exists && !ConfirmFileOverwrite())
-            {
-                await Init();
-                return;
-            }
-
-            Console.WriteLine("Uploading file..");
-            var url = await storageService.UploadAsync(container, filePath, file);
-            Console.WriteLine($"Uploaded file to {url}{Environment.NewLine}Press any key to close..");
-            Console.ReadKey();
         }
 
         private static bool ConfirmFileOverwrite()
@@ -93,16 +97,6 @@ namespace FileStorageUploader.Core
                 }
             } while (true);
             return true;
-        }
-
-        private static FileStream? GetFileFromPath(string path)
-        {
-            if (!File.Exists(path))
-            {
-                Console.WriteLine("File does not exist. Please try again.");
-                return null;
-            }
-            return File.OpenRead(path);
         }
 
         private static string GetInput(string prompt)

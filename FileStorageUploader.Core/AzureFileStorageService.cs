@@ -1,11 +1,11 @@
-﻿namespace FileStorageUploader.Services
-{
-    using System.IO;
-    using System.Threading.Tasks;
-    using Azure.Storage.Blobs;
-    using Azure.Storage.Blobs.Models;
-    using Microsoft.Extensions.Configuration;
+﻿using System.IO;
+using System.Threading.Tasks;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Configuration;
 
+namespace FileStorageUploader.Core
+{
     public class AzureFileStorageService : IFileStorageService
     {
         private readonly string connectionString;
