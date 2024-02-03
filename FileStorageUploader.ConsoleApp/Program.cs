@@ -1,6 +1,10 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using FileStorageUploader.Core;
+using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using System;
 
 namespace FileStorageUploader.ConsoleApp
 {
@@ -8,31 +12,49 @@ namespace FileStorageUploader.ConsoleApp
     {
         static async Task Main(string[] args)
         {
-            await Init();
+            using (var host = CreateHostBuilder(args).Build())
+            {
+                await host.StartAsync();
+                var lifetime = host.Services.GetRequiredService<IHostApplicationLifetime>();
+                var storageService = host.Services.GetRequiredService<IFileStorageService>();
+                var fileSystemService = host.Services.GetRequiredService<IFileSystemService>();
+                var container = host.Services.GetRequiredService<IConfiguration>().GetValue("ContainerName", "FileUploaderFiles") ?? "FileUploaderFiles";
+                var logger = host.Services.GetRequiredService<ILogger<Program>>();
+
+                await Start(storageService, fileSystemService, logger, container);
+
+                lifetime.StopApplication();
+                await host.WaitForShutdownAsync();
+            }
         }
 
-        private static async Task Init()
+        public static IHostBuilder CreateHostBuilder(string[] args)
         {
-            var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false)
-            .AddUserSecrets<Program>()
-            .Build();
+            return Host.CreateDefaultBuilder(args)
+                .ConfigureServices((hostContext, services) =>
+                {
+                    services.AddSingleton<IFileStorageService, AzureFileStorageService>();
+                    services.AddSingleton<IFileSystemService, FileSystemService>();
+                })
+                .ConfigureAppConfiguration((hostContext, config) =>
+                {
+                    config.SetBasePath(Directory.GetCurrentDirectory());
+                    config.AddJsonFile("appsettings.json", optional: false);
+                    config.AddUserSecrets<Program>();
+                })
+                .UseConsoleLifetime();
+        }
 
-            var services = new ServiceCollection();
-            services.AddSingleton<IConfiguration>(configuration);
-            services.AddSingleton<IFileStorageService, AzureFileStorageService>();
-            services.AddSingleton<IFileSystemService, FileSystemService>();
-            var serviceProvider = services.BuildServiceProvider();
-
-            var storageService = serviceProvider.GetRequiredService<IFileStorageService>();
-            var fileSystemService = serviceProvider.GetRequiredService<IFileSystemService>();
-            var container = configuration["ContainerName"];
-
+        private static async Task Start(
+            IFileStorageService storageService, 
+            IFileSystemService fileSystemService, 
+            ILogger logger, 
+            string container)
+        {
             var files = fileSystemService.GetFilesFromPath(GetInput("Enter path to File"));
             if (files.Length <= 0)
             {
-                await Init();
+                await Start(storageService, fileSystemService, logger, container);
                 return;
             }
 
@@ -40,9 +62,10 @@ namespace FileStorageUploader.ConsoleApp
             {
                 var file = File.OpenRead(fsPath);
                 var fileName = Path.GetFileName(file.Name);
+
                 if (!ConfirmFileName(fileName))
                 {
-                    await Init();
+                    await Start(storageService, fileSystemService, logger, container);
                     return;
                 }
 
@@ -52,7 +75,7 @@ namespace FileStorageUploader.ConsoleApp
                 var exists = await storageService.ExistsAsync(container, filePath);
                 if (exists && !ConfirmFileOverwrite())
                 {
-                    await Init();
+                    await Start(storageService, fileSystemService, logger, container);
                     return;
                 }
 
