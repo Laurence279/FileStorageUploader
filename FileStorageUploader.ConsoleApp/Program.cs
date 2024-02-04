@@ -12,20 +12,10 @@ namespace FileStorageUploader.ConsoleApp
     {
         static async Task Main(string[] args)
         {
-            using (var host = CreateHostBuilder(args).Build())
-            {
-                await host.StartAsync();
-                var lifetime = host.Services.GetRequiredService<IHostApplicationLifetime>();
-                var storageService = host.Services.GetRequiredService<IFileStorageService>();
-                var fileSystemService = host.Services.GetRequiredService<IFileSystemService>();
-                var container = host.Services.GetRequiredService<IConfiguration>().GetValue("ContainerName", "FileUploaderFiles") ?? "FileUploaderFiles";
-                var logger = host.Services.GetRequiredService<ILogger<Program>>();
-
-                await Start(storageService, fileSystemService, logger, container);
-
-                lifetime.StopApplication();
-                await host.WaitForShutdownAsync();
-            }
+            var host = CreateHostBuilder(args).Build();
+            
+            var fileSystemService = host.Services.GetRequiredService<IFileSystemService>();
+            await fileSystemService.Run();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args)
@@ -45,45 +35,22 @@ namespace FileStorageUploader.ConsoleApp
                 .UseConsoleLifetime();
         }
 
-        private static async Task Start(
-            IFileStorageService storageService, 
-            IFileSystemService fileSystemService, 
-            ILogger logger, 
-            string container)
+        private static bool Confirm(string prompt)
         {
-            var files = fileSystemService.GetFilesFromPath(GetInput("Enter path to File"));
-            if (files.Length <= 0)
+            do
             {
-                await Start(storageService, fileSystemService, logger, container);
-                return;
-            }
-
-            foreach (var fsPath in files)
-            {
-                var file = File.OpenRead(fsPath);
-                var fileName = Path.GetFileName(file.Name);
-
-                if (!ConfirmFileName(fileName))
+                Console.WriteLine($"{0} (Y/N)", prompt);
+                var key = char.ToUpper(Console.ReadKey(true).KeyChar);
+                if (key == 'N')
                 {
-                    await Start(storageService, fileSystemService, logger, container);
-                    return;
+                    return false;
                 }
-
-                var dir = GetInput("[Optional]: Enter file storage directory");
-                var filePath = Path.Combine(dir, fileName);
-
-                var exists = await storageService.ExistsAsync(container, filePath);
-                if (exists && !ConfirmFileOverwrite())
+                else if (key == 'Y')
                 {
-                    await Start(storageService, fileSystemService, logger, container);
-                    return;
+                    break;
                 }
-
-                Console.WriteLine("Uploading file..");
-                var url = await storageService.UploadAsync(container, filePath, file);
-                Console.WriteLine($"Uploaded file to {url}{Environment.NewLine}Press any key to close..");
-                Console.ReadKey();
-            }
+            } while (true);
+            return true;
         }
 
         private static bool ConfirmFileOverwrite()
