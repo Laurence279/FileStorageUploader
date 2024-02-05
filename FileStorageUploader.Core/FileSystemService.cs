@@ -49,8 +49,14 @@ namespace FileStorageUploader.Core
             var files = this.GetFilesFromPath(GetInput("Enter path to file or directory"));
             if (files.Length <= 0)
             {
+                Print("No files found.");
                 await Run();
                 return;
+            }
+
+            if (files.Length > 1)
+            {
+                Print($"Found {files.Length} files");
             }
 
             foreach (var fsPath in files)
@@ -58,7 +64,7 @@ namespace FileStorageUploader.Core
                 var file = File.OpenRead(fsPath);
                 var fileName = Path.GetFileName(file.Name);
 
-                if (!Confirm($"Found {fileName}{Environment.NewLine}Do you want to continue?"))
+                if (!Confirm($"Do you want to continue?"))
                 {
                     await Run();
                     return;
