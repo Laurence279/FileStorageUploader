@@ -5,7 +5,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Configuration;
 
-namespace FileStorageUploader.Core
+namespace FileStorageUploader.Core.Services
 {
     public class AzureFileStorageService : IFileStorageService
     {
@@ -15,15 +15,15 @@ namespace FileStorageUploader.Core
 
         public AzureFileStorageService(IConfiguration config)
         {
-            this.connectionString = config["ConnectionString"] ?? "";
-            this.storageContainerName = config["ContainerName"] ?? "";
+            connectionString = config["ConnectionString"] ?? "";
+            storageContainerName = config["ContainerName"] ?? "";
 
             InitContainer().Wait();
         }
 
         private async Task<bool> InitContainer()
         {
-            var blobClient = new BlobContainerClient(this.connectionString, this.storageContainerName);
+            var blobClient = new BlobContainerClient(connectionString, storageContainerName);
             await blobClient.CreateIfNotExistsAsync(PublicAccessType.BlobContainer);
             return true;
         }
@@ -34,7 +34,7 @@ namespace FileStorageUploader.Core
             var percentageRef = 0;
             progress.ProgressChanged += (sender, e) => HandleProgressChanged(sender, e, stream.Length, ref percentageRef);
 
-            var blobClient = this.GetBlobClient(container, fileName);
+            var blobClient = GetBlobClient(container, fileName);
 
             await blobClient.UploadAsync(stream, progressHandler: progress);
             return blobClient.Uri.AbsoluteUri;
@@ -42,7 +42,7 @@ namespace FileStorageUploader.Core
 
         private void HandleProgressChanged(object? sender, double e, double size, ref int prevVal)
         {
-            var percentage = (int)Math.Round((e / size) * 100);
+            var percentage = (int)Math.Round(e / size * 100);
             if (percentage == prevVal) return;
             prevVal = percentage;
             UploadProgressChanged?.Invoke(percentage);
@@ -50,12 +50,12 @@ namespace FileStorageUploader.Core
 
         public async Task<bool> ExistsAsync(string container, string fileName)
         {
-            return await this.GetBlobClient(container, fileName).ExistsAsync();
+            return await GetBlobClient(container, fileName).ExistsAsync();
         }
 
         private BlobClient GetBlobClient(string container, string filename)
         {
-            var containerClient = new BlobContainerClient(this.connectionString, container);
+            var containerClient = new BlobContainerClient(connectionString, container);
             return containerClient.GetBlobClient(filename);
         }
     }

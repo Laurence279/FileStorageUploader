@@ -1,6 +1,6 @@
 ﻿using Azure.Storage.Blobs.Models;
 
-namespace FileStorageUploader.Core
+namespace FileStorageUploader.Core.Services
 {
     public interface IFileStorageService
     {

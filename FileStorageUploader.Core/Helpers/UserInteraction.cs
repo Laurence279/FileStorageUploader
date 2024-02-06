@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FileStorageUploader.Core
+﻿namespace FileStorageUploader.Core.Helpers
 {
     public static class UserInteraction
     {
@@ -33,9 +27,14 @@ namespace FileStorageUploader.Core
             return result ?? string.Empty;
         }
 
-        public static void Print(string message)
+        public static void PrintLine(string message)
         {
             Console.WriteLine(message);
+        }
+
+        public static void Print(string message)
+        {
+            Console.Write(message);
         }
 
         public static void WaitForKey()

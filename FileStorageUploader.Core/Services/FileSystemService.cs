@@ -1,9 +1,8 @@
-﻿using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
+﻿using FileStorageUploader.Core.Enums;
 using Microsoft.Extensions.Configuration;
-using static FileStorageUploader.Core.UserInteraction;
+using static FileStorageUploader.Core.Helpers.UserInteraction;
 
-namespace FileStorageUploader.Core
+namespace FileStorageUploader.Core.Services
 {
     public class FileSystemService : IFileSystemService
     {
@@ -14,7 +13,7 @@ namespace FileStorageUploader.Core
         public FileSystemService(IConfiguration config, IFileStorageService storageService)
         {
             this.storageService = storageService;
-            this.container = config["ContainerName"] ?? "";
+            container = config["ContainerName"] ?? "";
             if (container == string.Empty)
             {
                 throw new ArgumentException("Please specify a container name");
@@ -42,31 +41,30 @@ namespace FileStorageUploader.Core
             }
             catch (Exception ex)
             {
-                Print($"Error getting files from path '{path}': {ex.Message}");
+                PrintLine($"Error getting files from path '{path}': {ex.Message}");
                 return [];
             }
         }
 
         public async Task Run()
         {
-            var files = this.GetFilesFromPath(GetInput("Enter path to file or directory"));
-
+            var files = GetFilesFromPath(GetInput("Enter path to file or directory"));
             switch (files.Length)
             {
                 case 0:
                     {
-                        Print("No files found.");
+                        PrintLine("No files found.");
                         await Run();
                         return;
                     }
                 case 1:
                     {
-                        Print($"Found 1 file.");
+                        PrintLine($"Found 1 file.");
                         break;
                     }
                 case > 1:
                     {
-                        Print($"Found {files.Length} files.");
+                        PrintLine($"Found {files.Length} files.");
                         break;
                     }
             }
@@ -79,25 +77,36 @@ namespace FileStorageUploader.Core
 
             var dir = GetInput("[Optional]: Enter file storage path to upload to, leave blank for root.");
 
-            foreach (var fsPath in files)
+            var overwriteOption = OverwriteOption.Undefined;
+
+            for (var i = 0; i < files.Length; i++)
             {
-                var file = File.OpenRead(fsPath);
+                var file = File.OpenRead(files[i]);
                 var fileName = Path.GetFileName(file.Name);
                 var filePath = Path.Combine(dir, fileName);
 
                 var exists = await storageService.ExistsAsync(container, filePath);
-                if (exists && !Confirm("File already exists. Overwrite?")) continue;
 
-                storageService.UploadProgressChanged += (int percentage) => ProgressUpdatedCallback(percentage, fileName, 1, files.Length);
+                if (exists && overwriteOption == OverwriteOption.Undefined)
+                {
+                    overwriteOption = Confirm("One or more files already exist. Overwrite existing files?") ? OverwriteOption.Overwrite : OverwriteOption.Skip;
+                }
+                if (exists && overwriteOption == OverwriteOption.Skip)
+                {
+                    PrintLine($"Skipping file {i + 1} of {files.Length}");
+                    continue;
+                }
+
+                storageService.UploadProgressChanged += (percentage) => HandleProgressUpdated(percentage, i + 1, files.Length);
                 var url = await storageService.UploadAsync(container, filePath, file);
-                Print($"{Environment.NewLine}Uploaded file to {url}{Environment.NewLine}Press any key to close..");
-                WaitForKey();
             }
+            PrintLine($"{Environment.NewLine}Finished processing all files. {Environment.NewLine}Press any key to close..");
+            WaitForKey();
         }
 
-        private void ProgressUpdatedCallback(int percentage, string fileName, int fileNumber, int filesRemaining)
+        private static void HandleProgressUpdated(int percentage, int fileNumber, int filesRemaining)
         {
-            Console.Write($"\rUploading file {fileNumber}/{filesRemaining}: {percentage}% ");
+            Print($"\rUploading file {fileNumber}/{filesRemaining}: {percentage}% ");
         }
     }
 }

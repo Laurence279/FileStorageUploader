@@ -1,4 +1,4 @@
-﻿namespace FileStorageUploader.Core
+﻿namespace FileStorageUploader.Core.Services
 {
     public interface IFileSystemService
     {
