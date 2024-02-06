@@ -1,4 +1,6 @@
-﻿namespace FileStorageUploader.Core
+﻿using Azure.Storage.Blobs.Models;
+
+namespace FileStorageUploader.Core
 {
     public interface IFileStorageService
     {

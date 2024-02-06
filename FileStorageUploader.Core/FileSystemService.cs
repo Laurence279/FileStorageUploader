@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Configuration;
 using static FileStorageUploader.Core.UserInteraction;
 
 namespace FileStorageUploader.Core
@@ -7,6 +9,7 @@ namespace FileStorageUploader.Core
     {
         private readonly IFileStorageService storageService;
         private readonly string container;
+
 
         public FileSystemService(IConfiguration config, IFileStorageService storageService)
         {
@@ -47,41 +50,48 @@ namespace FileStorageUploader.Core
         public async Task Run()
         {
             var files = this.GetFilesFromPath(GetInput("Enter path to file or directory"));
-            if (files.Length <= 0)
+
+            switch (files.Length)
             {
-                Print("No files found.");
+                case 0:
+                    {
+                        Print("No files found.");
+                        await Run();
+                        return;
+                    }
+                case 1:
+                    {
+                        Print($"Found 1 file.");
+                        break;
+                    }
+                case > 1:
+                    {
+                        Print($"Found {files.Length} files.");
+                        break;
+                    }
+            }
+
+            if (!Confirm($"Do you want to continue?"))
+            {
                 await Run();
                 return;
             }
 
-            if (files.Length > 1)
-            {
-                Print($"Found {files.Length} files");
-            }
+            var dir = GetInput("[Optional]: Enter file storage path to upload to, leave blank for root.");
 
             foreach (var fsPath in files)
             {
                 var file = File.OpenRead(fsPath);
                 var fileName = Path.GetFileName(file.Name);
-
-                if (!Confirm($"Do you want to continue?"))
-                {
-                    await Run();
-                    return;
-                }
-
-                var dir = GetInput("[Optional]: Enter file storage path to upload to, leave blank for root directory.");
                 var filePath = Path.Combine(dir, fileName);
 
                 var exists = await storageService.ExistsAsync(container, filePath);
-                if (exists && !Confirm("File already exists. Overwrite?"))
-                {
-                    await Run();
-                    return;
-                }
+                if (exists && !Confirm("File already exists. Overwrite?")) continue;
+                
+                var url = await storageService.UploadAsync(container, filePath, file);
 
                 Print("Uploading file..");
-                var url = await storageService.UploadAsync(container, filePath, file);
+                // var url = await storageService.UploadAsync(container, filePath, file);
                 Print($"Uploaded file to {url}{Environment.NewLine}Press any key to close..");
                 WaitForKey();
             }

@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Configuration;
@@ -28,10 +29,22 @@ namespace FileStorageUploader.Core
 
         public async Task<string> UploadAsync(string container, string fileName, Stream stream)
         {
+            var progress = new Progress<long>();
+            var percentageRef = 0;
+            progress.ProgressChanged += (sender, e) => HandleProgressChanged(sender, e, stream.Length, ref percentageRef);
+
             var blobClient = this.GetBlobClient(container, fileName);
 
-            await blobClient.UploadAsync(stream, true);
+            await blobClient.UploadAsync(stream, progressHandler: progress);
             return blobClient.Uri.AbsoluteUri;
+        }
+
+        private void HandleProgressChanged(object? sender, double e, double size, ref int prevVal)
+        {
+            var percentage = (int)Math.Round((e / size) * 100);
+            if (percentage == prevVal) return;
+            Console.Write($"\r{percentage}% ");
+            prevVal = percentage;
         }
 
         public async Task<bool> ExistsAsync(string container, string fileName)
