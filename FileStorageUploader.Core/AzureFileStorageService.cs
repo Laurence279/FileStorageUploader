@@ -11,6 +11,7 @@ namespace FileStorageUploader.Core
     {
         private readonly string connectionString;
         private readonly string storageContainerName;
+        public event Action<int>? UploadProgressChanged;
 
         public AzureFileStorageService(IConfiguration config)
         {
@@ -43,8 +44,8 @@ namespace FileStorageUploader.Core
         {
             var percentage = (int)Math.Round((e / size) * 100);
             if (percentage == prevVal) return;
-            Console.Write($"\r{percentage}% ");
             prevVal = percentage;
+            UploadProgressChanged?.Invoke(percentage);
         }
 
         public async Task<bool> ExistsAsync(string container, string fileName)

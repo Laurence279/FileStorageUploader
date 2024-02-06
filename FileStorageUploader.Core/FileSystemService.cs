@@ -87,14 +87,17 @@ namespace FileStorageUploader.Core
 
                 var exists = await storageService.ExistsAsync(container, filePath);
                 if (exists && !Confirm("File already exists. Overwrite?")) continue;
-                
-                var url = await storageService.UploadAsync(container, filePath, file);
 
-                Print("Uploading file..");
-                // var url = await storageService.UploadAsync(container, filePath, file);
-                Print($"Uploaded file to {url}{Environment.NewLine}Press any key to close..");
+                storageService.UploadProgressChanged += (int percentage) => ProgressUpdatedCallback(percentage, fileName, 1, files.Length);
+                var url = await storageService.UploadAsync(container, filePath, file);
+                Print($"{Environment.NewLine}Uploaded file to {url}{Environment.NewLine}Press any key to close..");
                 WaitForKey();
             }
+        }
+
+        private void ProgressUpdatedCallback(int percentage, string fileName, int fileNumber, int filesRemaining)
+        {
+            Console.Write($"\rUploading file {fileNumber}/{filesRemaining}: {percentage}% ");
         }
     }
 }

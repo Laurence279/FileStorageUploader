@@ -6,6 +6,8 @@ namespace FileStorageUploader.Core
     {
         Task<string> UploadAsync(string container, string fileName, Stream stream);
 
+        public event Action<int>? UploadProgressChanged;
+
         Task<bool> ExistsAsync(string container, string fileName);
     }
 }
