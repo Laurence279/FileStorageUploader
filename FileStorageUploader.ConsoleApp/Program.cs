@@ -25,6 +25,7 @@ namespace FileStorageUploader.ConsoleApp
                 {
                     services.AddSingleton<IFileStorageService, AzureFileStorageService>();
                     services.AddSingleton<IFileSystemService, FileSystemService>();
+                    services.AddSingleton<IUserInteractionService, UserInteractionService>();
                 })
                 .ConfigureAppConfiguration((hostContext, config) =>
                 {

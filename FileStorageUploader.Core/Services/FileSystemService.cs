@@ -1,18 +1,19 @@
 ﻿using FileStorageUploader.Core.Enums;
 using Microsoft.Extensions.Configuration;
-using static FileStorageUploader.Core.Helpers.UserInteraction;
 
 namespace FileStorageUploader.Core.Services
 {
     public class FileSystemService : IFileSystemService
     {
         private readonly IFileStorageService storageService;
+        private readonly IUserInteractionService userInteractionService;
         private readonly string container;
 
 
-        public FileSystemService(IConfiguration config, IFileStorageService storageService)
+        public FileSystemService(IConfiguration config, IFileStorageService storageService, IUserInteractionService userInteractionService)
         {
             this.storageService = storageService;
+            this.userInteractionService = userInteractionService;
             container = config["ContainerName"] ?? "";
             if (container == string.Empty)
             {
@@ -35,50 +36,54 @@ namespace FileStorageUploader.Core.Services
                 }
                 else
                 {
-                    Print($"Path not found: {path}");
+                    this.userInteractionService.Print($"Path not found: {path}");
                     return [];
                 }
             }
             catch (Exception ex)
             {
-                PrintLine($"Error getting files from path '{path}': {ex.Message}");
+                this.userInteractionService.PrintLine($"Error getting files from path '{path}': {ex.Message}");
                 return [];
             }
         }
 
         public async Task Run()
         {
-            var files = GetFilesFromPath(GetInput("Enter path to file or directory"));
+            var files = GetFilesFromPath(this.userInteractionService.GetInput("Enter path to file or directory"));
             switch (files.Length)
             {
                 case 0:
                     {
-                        PrintLine("No files found.");
+                        this.userInteractionService.PrintLine("No files found.");
                         await Run();
                         return;
                     }
                 case 1:
                     {
-                        PrintLine($"Found 1 file.");
+                        this.userInteractionService.PrintLine($"Found 1 file.");
                         break;
                     }
                 case > 1:
                     {
-                        PrintLine($"Found {files.Length} files.");
+                        this.userInteractionService.PrintLine($"Found {files.Length} files.");
                         break;
                     }
             }
 
-            if (!Confirm($"Do you want to continue?"))
+            if (!this.userInteractionService.Confirm($"Do you want to continue?"))
             {
                 await Run();
                 return;
             }
 
-            var dir = GetInput("[Optional]: Enter file storage path to upload to, leave blank for root.");
+            var dir = this.userInteractionService.GetInput("[Optional]: Enter file storage path to upload to, leave blank for root.");
+            await UploadFiles(files, dir);
+            this.userInteractionService.PrintLine($"{Environment.NewLine}Finished processing all files. {Environment.NewLine}Press any key to close..");
+            this.userInteractionService.WaitForKey();
+        }
 
-            var overwriteOption = OverwriteOption.Undefined;
-
+        public async Task<bool> UploadFiles(string[] files, string dir, OverwriteOption? overwriteOption = OverwriteOption.Undefined)
+        {
             for (var i = 0; i < files.Length; i++)
             {
                 var file = File.OpenRead(files[i]);
@@ -89,24 +94,23 @@ namespace FileStorageUploader.Core.Services
 
                 if (exists && overwriteOption == OverwriteOption.Undefined)
                 {
-                    overwriteOption = Confirm("One or more files already exist. Overwrite existing files?") ? OverwriteOption.Overwrite : OverwriteOption.Skip;
+                    overwriteOption = this.userInteractionService.Confirm("One or more files already exist. Overwrite existing files?") ? OverwriteOption.Overwrite : OverwriteOption.Skip;
                 }
                 if (exists && overwriteOption == OverwriteOption.Skip)
                 {
-                    PrintLine($"Skipping file {i + 1} of {files.Length}");
+                    this.userInteractionService.PrintLine($"Skipping file {i + 1} of {files.Length}");
                     continue;
                 }
 
                 storageService.UploadProgressChanged += (percentage) => HandleProgressUpdated(percentage, i + 1, files.Length);
-                var url = await storageService.UploadAsync(container, filePath, file);
+                await storageService.UploadAsync(container, filePath, file);
             }
-            PrintLine($"{Environment.NewLine}Finished processing all files. {Environment.NewLine}Press any key to close..");
-            WaitForKey();
+            return true;
         }
 
-        private static void HandleProgressUpdated(int percentage, int fileNumber, int filesRemaining)
+        private void HandleProgressUpdated(int percentage, int fileNumber, int filesRemaining)
         {
-            Print($"\rUploading file {fileNumber}/{filesRemaining}: {percentage}% ");
+            this.userInteractionService.Print($"\rUploading file {fileNumber}/{filesRemaining}: {percentage}% ");
         }
     }
 }

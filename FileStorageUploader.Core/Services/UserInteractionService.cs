@@ -1,8 +1,14 @@
-﻿namespace FileStorageUploader.Core.Helpers
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FileStorageUploader.Core.Services
 {
-    public static class UserInteraction
+    public class UserInteractionService : IUserInteractionService
     {
-        public static bool Confirm(string prompt)
+        public bool Confirm(string prompt)
         {
             do
             {
@@ -20,24 +26,24 @@
             return true;
         }
 
-        public static string GetInput(string prompt)
+        public string GetInput(string prompt)
         {
             Console.WriteLine("{0}", prompt);
             var result = Console.ReadLine();
             return result ?? string.Empty;
         }
 
-        public static void PrintLine(string message)
+        public void PrintLine(string message)
         {
             Console.WriteLine(message);
         }
 
-        public static void Print(string message)
+        public void Print(string message)
         {
             Console.Write(message);
         }
 
-        public static void WaitForKey()
+        public void WaitForKey()
         {
             Console.ReadKey();
         }
