@@ -10,9 +10,10 @@ namespace FileStorageUploader.Tests.Services
     {
         private class MockFileStorageService : IFileStorageService
         {
+            public bool FileExists { get; set; }
             public Task<bool> ExistsAsync(string container, string path)
             {
-                return Task.FromResult(true);
+                return Task.FromResult(this.FileExists);
             }
 
             public event Action<int>? UploadProgressChanged;
@@ -25,9 +26,10 @@ namespace FileStorageUploader.Tests.Services
 
         private class MockUserInteractionService : IUserInteractionService
         {
+            public bool UserConfirmed { get; set; }
             public bool Confirm(string prompt)
             {
-                return true;
+                return this.UserConfirmed;
             }
 
             public string GetInput(string prompt)
@@ -54,7 +56,7 @@ namespace FileStorageUploader.Tests.Services
         private IConfiguration configuration;
         private IFileStorageService fileStorageService;
         private IUserInteractionService userInteractionService;
-        private FileSystemService fileSystemService;
+        private IFileSystemService fileSystemService;
 
         [SetUp]
         public void SetUp()
@@ -76,15 +78,19 @@ namespace FileStorageUploader.Tests.Services
         }
 
         [Test]
-        public void UploadFiles_FileExistsAndOverwrite_()
+        public async Task UploadFiles_FileExistsAndUserDeclinesOverwrite_DoesNotUploadFileAsync()
         {
             string filePath = Path.GetTempFileName();
+            var fileStorageService = new MockFileStorageService();
+            fileStorageService.FileExists = true;
 
-            var expected = Task.FromResult(true);
+            var userInteractionService = new MockUserInteractionService();
+            userInteractionService.UserConfirmed = false;
 
-            var result = fileSystemService.UploadFiles([filePath], string.Empty, OverwriteOption.Overwrite);
+            var fileSystemService = new FileSystemService(configuration, fileStorageService, userInteractionService);
 
-            Assert.That(result, Is.EqualTo(expected));
+            var result = await fileSystemService.UploadFiles([filePath], string.Empty);
+            Assert.That(result, Is.Empty);
         }
     }
 }

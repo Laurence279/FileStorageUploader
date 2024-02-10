@@ -82,8 +82,9 @@ namespace FileStorageUploader.Core.Services
             this.userInteractionService.WaitForKey();
         }
 
-        public async Task<bool> UploadFiles(string[] files, string dir, OverwriteOption? overwriteOption = OverwriteOption.Undefined)
+        public async Task<List<string>> UploadFiles(string[] files, string dir, OverwriteOption? overwriteOption = OverwriteOption.Undefined)
         {
+            var uploadedFiles = new List<string>();
             for (var i = 0; i < files.Length; i++)
             {
                 var file = File.OpenRead(files[i]);
@@ -104,8 +105,9 @@ namespace FileStorageUploader.Core.Services
 
                 storageService.UploadProgressChanged += (percentage) => HandleProgressUpdated(percentage, i + 1, files.Length);
                 await storageService.UploadAsync(container, filePath, file);
+                uploadedFiles.Add(files[i]);
             }
-            return true;
+            return uploadedFiles;
         }
 
         private void HandleProgressUpdated(int percentage, int fileNumber, int filesRemaining)
