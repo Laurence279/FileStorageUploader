@@ -1,11 +1,10 @@
-﻿namespace FileStorageUploader.Services
+﻿namespace FileStorageUploader.Core.Services
 {
-    using System.IO;
-    using System.Threading.Tasks;
-
     public interface IFileStorageService
     {
         Task<string> UploadAsync(string container, string fileName, Stream stream);
+
+        public event Action<int>? UploadProgressChanged;
 
         Task<bool> ExistsAsync(string container, string fileName);
     }
