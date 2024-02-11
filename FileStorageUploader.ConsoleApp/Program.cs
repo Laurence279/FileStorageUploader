@@ -1,10 +1,7 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using FileStorageUploader.Core.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using System;
-using FileStorageUploader.Core.Services;
 
 namespace FileStorageUploader.ConsoleApp
 {
@@ -13,7 +10,7 @@ namespace FileStorageUploader.ConsoleApp
         static async Task Main(string[] args)
         {
             var host = CreateHostBuilder(args).Build();
-            
+
             var fileSystemService = host.Services.GetRequiredService<IFileSystemService>();
             await fileSystemService.Run();
         }

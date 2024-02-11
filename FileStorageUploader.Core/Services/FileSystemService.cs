@@ -77,12 +77,12 @@ namespace FileStorageUploader.Core.Services
             }
 
             var dir = this.userInteractionService.GetInput("[Optional]: Enter file storage path to upload to, leave blank for root.");
-            await UploadFiles(files, dir);
+            await ProcessFiles(files, dir);
             this.userInteractionService.PrintLine($"{Environment.NewLine}Finished processing all files. {Environment.NewLine}Press any key to close..");
             this.userInteractionService.WaitForKey();
         }
 
-        public async Task<List<string>> UploadFiles(string[] files, string dir, OverwriteOption? overwriteOption = OverwriteOption.Undefined)
+        public async Task<List<string>> ProcessFiles(string[] files, string dir, OverwriteOption? overwriteOption = OverwriteOption.Undefined)
         {
             var uploadedFiles = new List<string>();
             for (var i = 0; i < files.Length; i++)

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FileStorageUploader.Core.Services
+﻿namespace FileStorageUploader.Core.Services
 {
     public class UserInteractionService : IUserInteractionService
     {

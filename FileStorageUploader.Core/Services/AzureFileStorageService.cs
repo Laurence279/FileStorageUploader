@@ -1,7 +1,4 @@
-﻿using System.IO;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-using Azure.Storage.Blobs;
+﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Configuration;
 

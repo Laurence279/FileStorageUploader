@@ -1,7 +1,5 @@
-using FileStorageUploader.Core.Enums;
 using FileStorageUploader.Core.Services;
 using Microsoft.Extensions.Configuration;
-using NUnit.Framework.Constraints;
 
 namespace FileStorageUploader.Tests.Services
 {
@@ -10,10 +8,10 @@ namespace FileStorageUploader.Tests.Services
     {
         private class MockFileStorageService : IFileStorageService
         {
-            public bool FileExists { get; set; }
+            public bool FileExistsResult { get; set; }
             public Task<bool> ExistsAsync(string container, string path)
             {
-                return Task.FromResult(this.FileExists);
+                return Task.FromResult(this.FileExistsResult);
             }
 
             public event Action<int>? UploadProgressChanged;
@@ -26,10 +24,10 @@ namespace FileStorageUploader.Tests.Services
 
         private class MockUserInteractionService : IUserInteractionService
         {
-            public bool UserConfirmed { get; set; }
+            public bool UserConfirmResult { get; set; }
             public bool Confirm(string prompt)
             {
-                return this.UserConfirmed;
+                return this.UserConfirmResult;
             }
 
             public string GetInput(string prompt)
@@ -54,8 +52,8 @@ namespace FileStorageUploader.Tests.Services
         }
 
         private IConfiguration configuration;
-        private IFileStorageService fileStorageService;
-        private IUserInteractionService userInteractionService;
+        private MockFileStorageService fileStorageService;
+        private MockUserInteractionService userInteractionService;
         private IFileSystemService fileSystemService;
 
         [SetUp]
@@ -71,25 +69,19 @@ namespace FileStorageUploader.Tests.Services
         [Test]
         public void GetFilesFromPath_EmptyPath_ReturnsEmptyArray()
         {
-            var expected = Array.Empty<string>();
             var result = fileSystemService.GetFilesFromPath(string.Empty);
 
-            Assert.That(result, Is.EqualTo(expected));
+            Assert.That(result, Is.Empty);
         }
 
         [Test]
-        public async Task UploadFiles_FileExistsAndUserDeclinesOverwrite_DoesNotUploadFileAsync()
+        public async Task UploadFiles_FileExistsAndUserDeclinesOverwrite_DoesNotProcessFile()
         {
             string filePath = Path.GetTempFileName();
-            var fileStorageService = new MockFileStorageService();
-            fileStorageService.FileExists = true;
+            this.fileStorageService.FileExistsResult = true;
+            this.userInteractionService.UserConfirmResult = false;
 
-            var userInteractionService = new MockUserInteractionService();
-            userInteractionService.UserConfirmed = false;
-
-            var fileSystemService = new FileSystemService(configuration, fileStorageService, userInteractionService);
-
-            var result = await fileSystemService.UploadFiles([filePath], string.Empty);
+            var result = await this.fileSystemService.ProcessFiles([filePath], string.Empty);
             Assert.That(result, Is.Empty);
         }
     }
