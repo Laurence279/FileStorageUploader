@@ -5,6 +5,7 @@ namespace FileStorageUploader.Core.Services
 {
     public class FileSystemService : IFileSystemService
     {
+        private readonly IConfiguration configuration;
         private readonly IFileStorageService storageService;
         private readonly IUserInteractionService userInteractionService;
         private readonly string container;
@@ -12,13 +13,10 @@ namespace FileStorageUploader.Core.Services
 
         public FileSystemService(IConfiguration config, IFileStorageService storageService, IUserInteractionService userInteractionService)
         {
+            this.configuration = config;
             this.storageService = storageService;
             this.userInteractionService = userInteractionService;
-            container = config["ContainerName"] ?? "";
-            if (container == string.Empty)
-            {
-                throw new ArgumentException("Please specify a container name");
-            }
+            this.container = config["ContainerName"] ?? "";
         }
 
         public string[] GetFilesFromPath(string path)
@@ -49,6 +47,18 @@ namespace FileStorageUploader.Core.Services
 
         public async Task Run()
         {
+            if (string.IsNullOrWhiteSpace(configuration["ContainerName"]))
+            {
+                userInteractionService.PrintLine("Container name is required.");
+                userInteractionService.WaitForKey();
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(configuration["ConnectionString"]))
+            {
+                userInteractionService.PrintLine("Connection string is required.");
+                userInteractionService.WaitForKey();
+                return;
+            }
             var files = GetFilesFromPath(this.userInteractionService.GetInput("Enter path to file or directory"));
             switch (files.Length)
             {

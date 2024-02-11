@@ -1,4 +1,4 @@
-﻿using Azure.Storage.Blobs;
+using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Configuration;
 
@@ -15,7 +15,10 @@ namespace FileStorageUploader.Core.Services
             connectionString = config["ConnectionString"] ?? "";
             storageContainerName = config["ContainerName"] ?? "";
 
-            InitContainer().Wait();
+            if (!string.IsNullOrWhiteSpace(connectionString) && !string.IsNullOrWhiteSpace(storageContainerName))
+            {
+                InitContainer().Wait();
+            }
         }
 
         private async Task<bool> InitContainer()

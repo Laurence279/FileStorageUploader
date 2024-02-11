@@ -24,11 +24,14 @@ namespace FileStorageUploader.ConsoleApp
                     services.AddSingleton<IFileSystemService, FileSystemService>();
                     services.AddSingleton<IUserInteractionService, UserInteractionService>();
                 })
+                .ConfigureHostConfiguration(configBuilder =>
+                {
+                    configBuilder.AddCommandLine(args);
+                })
                 .ConfigureAppConfiguration((hostContext, config) =>
                 {
                     config.SetBasePath(Directory.GetCurrentDirectory());
-                    config.AddJsonFile("appsettings.json", optional: false);
-                    config.AddUserSecrets<Program>();
+                    config.AddIniFile("config.ini", optional: false, reloadOnChange: true);
                 })
                 .UseConsoleLifetime();
         }
